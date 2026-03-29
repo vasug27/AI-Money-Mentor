@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from routes.api import router
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="AI Money Mentor 🚀")
+app = FastAPI(title="AI Money Mentor")
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,4 +16,4 @@ app.include_router(router, prefix="/api")
 
 @app.get("/")
 def root():
-    return {"message": "Backend running 🚀"}
+    return {"message": "Backend running!!"}

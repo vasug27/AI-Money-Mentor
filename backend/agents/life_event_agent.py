@@ -1,33 +1,64 @@
-import google.generativeai as genai
 import os
+from google import genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+MODEL_NAME = "gemini-2.5-flash"
 
-def life_event_advice(data):
-    prompt = f"""
-    You are a financial advisor in India.
+SYSTEM_PROMPT = """You are an expert Indian financial advisor specializing in life events.
+Be concise, practical, and conversational. Use Rs. for amounts.
+Ask one follow-up question at a time to gather more context before giving a full plan.
+When you have enough context, give:
+1. Allocation (percent split of the amount)
+2. Concrete actions to take
+3. Mistakes to avoid"""
 
-    User profile:
-    Income: {data.monthly_income}
-    Expenses: {data.monthly_expenses}
-    Savings: {data.savings}
 
-    Event: {data.event}
-    Amount: {data.amount}
+def _build_profile_context(profile: dict) -> str:
+    return (
+        f"Age: {profile.get('age', 'N/A')}, "
+        f"Monthly Income: Rs.{profile.get('monthly_income', 'N/A')}, "
+        f"Tax Bracket: {profile.get('tax_bracket', 'N/A')}%, "
+        f"Risk Profile: {profile.get('risk_profile', 'moderate')}, "
+        f"Existing Investments: Rs.{profile.get('existing_investments', 0)}, "
+        f"Amount Involved: Rs.{profile.get('amount_involved', 0)}"
+    )
 
-    Give:
-    1. What should they do with this money
-    2. Investment split
-    3. Mistakes to avoid
-    Keep it simple and practical.
-    """
 
-    model = genai.GenerativeModel("gemini-2.5-flash")
-    response = model.generate_content(prompt)
+def life_event_start(data) -> dict:
+    profile_ctx = _build_profile_context(data.profile)
 
-    return {
-        "advice": response.text
-    }
+    prompt = (
+        f"{SYSTEM_PROMPT}\n\n"
+        f"User Profile: {profile_ctx}\n"
+        f"Life Event: {data.event}\n\n"
+        "Open the conversation with a warm greeting acknowledging the event and "
+        "ask one focused follow-up question to understand their current situation better."
+    )
+
+    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    return {"message": response.text.strip()}
+
+
+def life_event_chat(data) -> dict:
+    profile_ctx = _build_profile_context(data.profile)
+
+    history_text = "\n".join(
+        f"{m['role'].capitalize()}: {m['content']}"
+        for m in data.messages
+    )
+
+    prompt = (
+        f"{SYSTEM_PROMPT}\n\n"
+        f"User Profile: {profile_ctx}\n"
+        f"Life Event: {data.event}\n\n"
+        f"Conversation so far:\n{history_text}\n\n"
+        "Continue the conversation as the financial advisor. "
+        "If you now have enough context, provide the full allocation plan. "
+        "Otherwise, ask the next most important follow-up question."
+    )
+
+    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    return {"message": response.text.strip()}
