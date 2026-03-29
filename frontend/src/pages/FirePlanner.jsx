@@ -36,8 +36,8 @@ export default function FirePlanner() {
   useEffect(() => {                
   if (user) {
     loadUserData(user.id, 'fire_form').then((saved) => {
-      if (saved) setForm(saved)
-    })
+  if (saved) setForm({ ...initialForm, ...saved })
+})
   }
 }, [user])
 

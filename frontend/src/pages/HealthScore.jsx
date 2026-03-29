@@ -51,8 +51,8 @@ export default function HealthScore() {
   useEffect(() => {
   if (user) {
     loadUserData(user.id, 'health_score_form').then((saved) => {
-      if (saved) setForm(saved)
-    })
+  if (saved) setForm({ ...initialForm, ...saved })  
+})
   }
 }, [user])
 

@@ -15,13 +15,7 @@ export default function MFXray() {
   const [error, setError] = useState(null)
   const { user } = useUser()
 
-  useEffect(() => {
-    if (user) {
-      loadUserData(user.id, 'mf_xray_result').then((saved) => {
-        if (saved) setResult(saved)
-      })
-    }
-  }, [user])
+  
 
   const handleUpload = async () => {
     if (!pdfFile) return

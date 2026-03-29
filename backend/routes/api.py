@@ -13,14 +13,14 @@ from agents.fire_agent import generate_fire_plan
 from agents.life_event_agent import life_event_start, life_event_chat
 from agents.tax_agent import tax_advisor
 from agents.couple_agent import couple_planner
+from agents.mf_xray_agent import analyse_portfolio, analyse_from_pdf
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 
 
 @router.post("/health-score")
 def health_score(input: HealthInput):
     return calculate_health_score(input)
-
 
 @router.post("/fire")
 def fire_plan(input: FireInput):
@@ -31,11 +31,9 @@ def fire_plan(input: FireInput):
 def tax(input: TaxInput):
     return tax_advisor(input)
 
-
 @router.post("/tax/upload")
 async def tax_upload(file: UploadFile = File(...)):
-    import pdfplumber
-    import io
+    import pdfplumber, io, re
 
     contents = await file.read()
     text = ""
@@ -44,7 +42,6 @@ async def tax_upload(file: UploadFile = File(...)):
             text += page.extract_text() or ""
 
     def extract(keyword, default=0.0):
-        import re
         match = re.search(rf"{keyword}[\s:₹]+([\d,]+)", text, re.IGNORECASE)
         return float(match.group(1).replace(",", "")) if match else default
 
@@ -62,7 +59,6 @@ async def tax_upload(file: UploadFile = File(...)):
         education_loan_interest=extract("Education Loan"),
         other_deductions=0.0,
     )
-
     return tax_advisor(parsed)
 
 
@@ -81,82 +77,26 @@ def couple(input: CoupleInput):
     return couple_planner(input)
 
 
-SAMPLE_MF_DATA = {
-    "total_invested":  500_000,
-    "current_value":   720_000,
-    "total_returns":   220_000,
-    "xirr":            14.5,
-    "nifty_xirr":      12.3,
-    "allocation": [
-        {"category": "Large Cap", "percentage": 40},
-        {"category": "Mid Cap",   "percentage": 30},
-        {"category": "Debt",      "percentage": 20},
-        {"category": "Gold",      "percentage": 10},
-    ],
-    "funds": [
-        {
-            "name":          "Mirae Asset Large Cap",
-            "invested":      200_000,
-            "current_value": 290_000,
-            "returns":       90_000,
-            "xirr":          15.2,
-            "expense_ratio": 0.54,
-        },
-        {
-            "name":          "Parag Parikh Flexi Cap",
-            "invested":      150_000,
-            "current_value": 215_000,
-            "returns":       65_000,
-            "xirr":          13.8,
-            "expense_ratio": 0.63,
-        },
-        {
-            "name":          "HDFC Mid Cap Opportunities",
-            "invested":      100_000,
-            "current_value": 145_000,
-            "returns":       45_000,
-            "xirr":          14.1,
-            "expense_ratio": 0.89,
-        },
-        {
-            "name":          "SBI Debt Fund",
-            "invested":      50_000,
-            "current_value": 70_000,
-            "returns":       20_000,
-            "xirr":          7.2,
-            "expense_ratio": 0.45,
-        },
-    ],
-    "overlaps": [
-        {
-            "fund1":   "Mirae Asset Large Cap",
-            "fund2":   "Parag Parikh Flexi Cap",
-            "overlap": 34,
-        }
-    ],
-    "rebalancing_plan": [
-        "Reduce Large Cap allocation from 40% to 35% — you are overweight.",
-        "Increase Mid Cap from 30% to 35% given your moderate risk profile.",
-        "Switch SBI Debt Fund to a lower expense ratio alternative.",
-        "Consider adding an International Fund for geographic diversification.",
-    ],
-}
+SAMPLE_FUNDS = [
+    {"name": "Mirae Asset Large Cap",        "invested": 200000, "current_value": 290000, "expense_ratio": 0.54},
+    {"name": "Parag Parikh Flexi Cap",        "invested": 150000, "current_value": 215000, "expense_ratio": 0.63},
+    {"name": "HDFC Mid Cap Opportunities",    "invested": 100000, "current_value": 145000, "expense_ratio": 0.89},
+    {"name": "SBI Debt Fund",                 "invested":  50000, "current_value":  70000, "expense_ratio": 0.45},
+]
 
 
 @router.post("/mf-xray/sample")
 def mf_xray_sample():
-    return SAMPLE_MF_DATA
+    return analyse_portfolio(SAMPLE_FUNDS)
 
 
 @router.post("/mf-xray/upload")
 async def mf_xray_upload(file: UploadFile = File(...)):
-    # TODO: Integrate pdfplumber + regex/LLM parsing for CAMS statement
-    # For now returns sample data as placeholder
-    return SAMPLE_MF_DATA
+    contents = await file.read()
+    return analyse_from_pdf(contents)
 
 
-
-_user_store: dict = {} 
+_user_store: dict = {}
 
 
 @router.post("/user/save")

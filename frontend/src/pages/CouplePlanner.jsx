@@ -109,15 +109,14 @@ const checkLinkStatus = async () => {
     // Load both profiles
     const p1 = await loadUserData(user.id, 'couple_partner1')
     const p2 = await loadUserData(linked.partnerId, 'couple_partner1')
-    if (p1) setPartner1(p1)
-    if (p2) setPartner2(p2)
+    if (p1) setPartner1({ ...initialPartner, ...p1 })
+    if (p2) setPartner2({ ...initialPartner, ...p2 })
   } else {
     setLinkStatus('unlinked')
   }
 }
 
 const handleLinkAccounts = async (partnerId) => {
-  // Save link for both users
   await saveUserData(user.id, 'couple_link', {
     partnerId,
     linkedAt: new Date().toISOString()
